@@ -11,7 +11,7 @@ from util import visualize
 
 # Load training dataset
 images_train, scrib_train, gt_train, fnames_train, palette = load_dataset(
-    "dataset/training", "images", "scribbles", "ground_truth"
+    "dataset/train", "images", "scribbles", "ground_truth"
 )
 
 # Inference
@@ -25,7 +25,7 @@ pred_train = np.stack(
 
 # Storing Predictions
 store_predictions(
-    pred_train, "dataset/training", "predictions", fnames_train, palette
+    pred_train, "dataset/train", "predictions", fnames_train, palette
 )
 
 # Visualizing model performance
@@ -40,7 +40,7 @@ visualize(
 
 # Load test dataset
 images_test, scrib_test, fnames_test = load_dataset(
-    "dataset/test", "images", "scribbles"
+    "dataset/test1", "images", "scribbles"
 )
 
 # Inference
@@ -54,7 +54,7 @@ pred_test = np.stack(
 
 # Storing segmented images for test dataset.
 store_predictions(
-    pred_test, "dataset/test", "predictions", fnames_test, palette
+    pred_test, "dataset/test1", "predictions", fnames_test, palette
 )
 
 
