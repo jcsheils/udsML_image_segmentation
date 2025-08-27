@@ -22,7 +22,7 @@ random.shuffle(indices)
 
 val_indices, train_indices = indices[:int(VAL_RATIO * len(indices))], indices[int(VAL_RATIO * len(indices)):]
 
-images_train, scrib_train, gt_train, fnames_train = images[val_indices], scrib[val_indices], gt[val_indices], [fnames[i] for i in val_indices]
+images_train, scrib_train, gt_train, fnames_train = images[train_indices], scrib[train_indices], gt[train_indices], [fnames[i] for i in train_indices]
 
 images_val, scrib_val, gt_val, fnames_val = images[val_indices], scrib[val_indices], gt[val_indices], [fnames[i] for i in val_indices]
 
