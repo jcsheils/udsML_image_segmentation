@@ -218,3 +218,25 @@ def visualize(
 
     plt.tight_layout()
     plt.show()
+
+def image_iou(pred, gt, cls):
+    pred_cls = (pred == cls)
+    gt_cls = (gt == cls)
+    union = np.logical_or(pred_cls, gt_cls).sum()
+    intersect = np.logical_and(pred_cls, gt_cls).sum()
+    return intersect / union
+
+def calculate_fg_bg_iou(pred, gt):
+    fg_ious = []
+    bg_ious = []
+
+    for i in range(pred.shape[0]):
+        fg_iou = image_iou(pred[i], gt[i], 1)
+        fg_ious.append(fg_iou)
+        bg_iou = image_iou(pred[i], gt[i], 0)
+        bg_ious.append(bg_iou)
+
+    mean_fg_iou = np.mean(fg_ious)
+    mean_bg_iou = np.mean(bg_ious)
+
+    return mean_fg_iou, mean_bg_iou

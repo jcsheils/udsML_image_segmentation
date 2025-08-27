@@ -6,6 +6,7 @@ from segmenters import KNNSegmenter
 from util import load_dataset
 from util import store_predictions
 from util import visualize
+from util import calculate_fg_bg_iou
 
 VAL_RATIO = 0.2
 
@@ -45,6 +46,19 @@ visualize(
     images_train[vis_index], scrib_train[vis_index],
     gt_train[vis_index], pred_train[vis_index]
 )
+
+pred_val = knn_segmenter.infer(images_val, scrib_val)
+
+# Inference
+# Create a numpy array of size num_val x 375 x 500, a stack of all the
+# segmented images. 1 = foreground, 0 = background.
+pred_val = np.stack(pred_val, axis=0)
+
+fg_iou, bg_iou = calculate_fg_bg_iou(pred_val, gt_val)
+
+print(f"Val Foreground IOU: {fg_iou:.05f}")
+print(f"Val Background IOU: {bg_iou:.05f}")
+print(f"Val Mean IOU: {(fg_iou + bg_iou) / 2:.05f}")
 
 
 ######### Test dataset
