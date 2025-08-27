@@ -11,65 +11,15 @@ matplotlib.use('TkAgg')
 # -------------------------------------------
 
 import matplotlib.pyplot as plt
-
-# --- Configuration ---
-ROOT_DIR = "data"
-IMAGE_DIR = os.path.join(ROOT_DIR, "images")
-SCRIBBLE_DIR = os.path.join(ROOT_DIR, "scribbles")
-TRUTH_DIR = os.path.join(ROOT_DIR, "ground_truth")
-
-# --- Dummy Data Generation (for demonstration) ---
-def create_dummy_data(num_files=5, size=(256, 256)):
-    """Creates the necessary directories and dummy image files if they don't exist."""
-    print("Checking for dummy data...")
-    if os.path.exists(ROOT_DIR):
-        print("Data directory already exists. Skipping creation.")
-        return
-
-    print(f"Creating dummy data in '{ROOT_DIR}' directory...")
-    os.makedirs(IMAGE_DIR, exist_ok=True)
-    os.makedirs(SCRIBBLE_DIR, exist_ok=True)
-    os.makedirs(TRUTH_DIR, exist_ok=True)
-
-    for i in range(1, num_files + 1):
-        base_name = str(i)
-        image_filename = f"{base_name}.jpg"
-        png_filename = f"{base_name}.png"
-
-        img_array = np.zeros((*size, 3), dtype=np.uint8)
-        g, r = np.meshgrid(np.arange(size[1]), np.arange(size[0]))
-        img_array[..., 0] = r / size[0] * (100 + i*30)
-        img_array[..., 1] = g / size[1] * (100 + i*30)
-        img_array[..., 2] = 50 + i*10
-        img = Image.fromarray(img_array)
-        img.save(os.path.join(IMAGE_DIR, image_filename))
-
-        scribble = Image.new("RGB", size, "white")
-        draw = ImageDraw.Draw(scribble)
-
-        # Draw black lines (will have value 0 when converted to grayscale)
-        draw.line((30, 30 + i*20, size[0] - 30, size[1] - (30 + i*20)), fill="black", width=3)
-        draw.ellipse((size[0]//2 - i*5, size[1]//2 - i*5, size[0]//2 + i*5, size[1]//2 + i*5), outline="black", width=2)
-        
-        # Draw a new shape with RGB color (1, 1, 1), which will convert to 1 in grayscale
-        # This is the shape that will be colored RED in the visualizer
-        draw.rectangle((20, size[1]-40, size[0]-20, size[1]-25), fill=(1, 1, 1))
-
-        scribble.save(os.path.join(SCRIBBLE_DIR, png_filename))
-
-        truth_array = np.zeros((*size, 3), dtype=np.uint8)
-        truth_array[:, :] = [20*i, 128 - 10*i, 200 - 25*i]
-        truth = Image.fromarray(truth_array)
-        truth.save(os.path.join(TRUTH_DIR, png_filename))
-
-    print(f"Created {num_files} sets of dummy images (.jpg for images, .png for others).")
+import argparse
 
 # --- The Visualizer Class ---
 class ImageVisualizer:
-    def __init__(self, image_dir, scribble_dir, truth_dir):
+    def __init__(self, image_dir, scribble_dir, truth_dir, prediction_dir):
         self.image_dir = image_dir
         self.scribble_dir = scribble_dir
         self.truth_dir = truth_dir
+        self.prediction_dir = prediction_dir
 
         try:
             self.files = sorted([f for f in os.listdir(self.scribble_dir) if f.endswith('.png')])
@@ -81,7 +31,8 @@ class ImageVisualizer:
             exit()
 
         self.current_index = 0
-        self.fig, (self.ax1, self.ax2) = plt.subplots(1, 2, figsize=(12, 6))
+        # Create the figure object, but not the axes yet. The axes will be created dynamically.
+        self.fig = plt.figure(figsize=(18, 6))
         self.fig.canvas.mpl_connect('key_press_event', self.on_key)
 
         print("\n--- Visualizer Controls ---")
@@ -107,11 +58,14 @@ class ImageVisualizer:
         img_path = os.path.join(self.image_dir, jpg_filename)
         scribble_path = os.path.join(self.scribble_dir, png_filename)
         truth_path = os.path.join(self.truth_dir, png_filename)
+        prediction_path = os.path.join(self.prediction_dir, png_filename)
+
+        # Clear the entire figure to remove old axes before drawing new ones
+        self.fig.clear()
 
         try:
             base_image = Image.open(img_path).convert("RGB")
             scribble_image = Image.open(scribble_path).convert("RGB")
-            truth_image = Image.open(truth_path)
 
 
             # --- New Overlay Logic using NumPy ---
@@ -133,24 +87,46 @@ class ImageVisualizer:
             
             # Convert the modified NumPy array back to a PIL Image for display.
             overlaid_image = Image.fromarray(overlaid_np)  
+            
+            # --- Dynamically build a list of images to display ---
+            plots_to_show = []
+            plots_to_show.append({'image': overlaid_image, 'title': "Image + Scribble Overlay"})
 
-            self.ax1.clear(); self.ax2.clear()
-            self.ax1.imshow(overlaid_image)
-            self.ax1.set_title("Image + Scribble Overlay"); self.ax1.axis('off')
-            self.ax2.imshow(truth_image)
-            self.ax2.set_title("Ground Truth"); self.ax2.axis('off')
+            if os.path.exists(truth_path):
+                truth_image = Image.open(truth_path)
+                plots_to_show.append({'image': truth_image, 'title': "Ground Truth"})
+
+            if os.path.exists(prediction_path):
+                prediction_image = Image.open(prediction_path)
+                plots_to_show.append({'image': prediction_image, 'title': "Prediction"})
+
+            # --- Create a grid with the exact number of subplots needed ---
+            num_plots = len(plots_to_show)
+            axes = self.fig.subplots(1, num_plots)
+
+            # If there's only one plot, subplots() returns a single Axes object, not an array.
+            # We wrap it in a list to make the code consistent for iterating.
+            if num_plots == 1:
+                axes = [axes]
+            
+            # Display each image on its corresponding axis
+            for i, p in enumerate(plots_to_show):
+                axes[i].imshow(p['image'])
+                axes[i].set_title(p['title'])
+                axes[i].axis('off')
 
             self.fig.suptitle(f"File: {base_name} (.jpg/.png) ({self.current_index + 1}/{len(self.files)})", fontsize=16)
             plt.tight_layout(rect=[0, 0.03, 1, 0.95])
             self.fig.canvas.draw()
 
         except FileNotFoundError as e:
-            print(f"\nError: Could not find a corresponding file.")
-            print(f"Attempted to load:\n - Image: {img_path}\n - Scribble: {scribble_path}\n - Ground Truth: {truth_path}")
+            print(f"\nError: Could not find a required file.")
+            print(f"Attempted to load:\n - Image: {img_path}\n - Scribble: {scribble_path}")
             print(f"Original error: {e}")
-            self.ax1.clear(); self.ax2.clear()
-            self.ax1.text(0.5, 0.5, f"File not found:\n{os.path.basename(e.filename)}", ha='center', va='center', color='red', wrap=True)
-            self.ax1.axis('off'); self.ax2.axis('off')
+            # Create a single axis to display the error message
+            ax = self.fig.add_subplot(1, 1, 1)
+            ax.text(0.5, 0.5, f"File not found:\n{os.path.basename(e.filename)}", ha='center', va='center', color='red', wrap=True)
+            ax.axis('off')
             self.fig.canvas.draw()
 
     def run(self):
@@ -158,6 +134,24 @@ class ImageVisualizer:
 
 # --- Main execution block ---
 if __name__ == "__main__":
-    create_dummy_data()
-    visualizer = ImageVisualizer(IMAGE_DIR, SCRIBBLE_DIR, TRUTH_DIR)
+    parser = argparse.ArgumentParser(description="Visualize image scribbles, ground truth, and predictions.")
+    parser.add_argument(
+        '--root_dir', 
+        type=str, 
+        default="data", 
+        help="The root directory containing the 'images', 'scribbles', 'ground_truth', and 'predictions' subfolders."
+    )
+    args = parser.parse_args()
+
+    # --- Define paths based on the command-line argument ---
+    ROOT_DIR = args.root_dir
+    IMAGE_DIR = os.path.join(ROOT_DIR, "images")
+    SCRIBBLE_DIR = os.path.join(ROOT_DIR, "scribbles")
+    TRUTH_DIR = os.path.join(ROOT_DIR, "ground_truth")
+    PREDICTION_DIR = os.path.join(ROOT_DIR, "predictions")
+
+    print(f"Using data from root directory: {os.path.abspath(ROOT_DIR)}")
+    os.makedirs(PREDICTION_DIR, exist_ok=True)
+    
+    visualizer = ImageVisualizer(IMAGE_DIR, SCRIBBLE_DIR, TRUTH_DIR, PREDICTION_DIR)
     visualizer.run()
