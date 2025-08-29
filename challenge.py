@@ -28,7 +28,7 @@ images_val, scrib_val, gt_val, fnames_val = images[val_indices], scrib[val_indic
 
 knn_segmenter = KNNSegmenter(k=3)
 
-pred_train = knn_segmenter.infer(images_train, scrib_train)
+pred_train = knn_segmenter.infer(images_train, scrib_train, only_connected_components=True)
 
 # Inference
 # Create a numpy array of size num_train x 375 x 500, a stack of all the
@@ -47,7 +47,7 @@ visualize(
     gt_train[vis_index], pred_train[vis_index]
 )
 
-pred_val = knn_segmenter.infer(images_val, scrib_val)
+pred_val = knn_segmenter.infer(images_val, scrib_val, only_connected_components=True)
 
 # Inference
 # Create a numpy array of size num_val x 375 x 500, a stack of all the
@@ -68,7 +68,7 @@ images_test, scrib_test, fnames_test = load_dataset(
     "dataset/test1", "images", "scribbles"
 )
 
-pred_test = knn_segmenter.infer(images_test, scrib_test)
+pred_test = knn_segmenter.infer(images_test, scrib_test, only_connected_components=True)
 
 # Inference
 # Create a numpy array of size num_test x 375 x 500, a stack of all the 
